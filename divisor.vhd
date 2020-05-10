@@ -43,6 +43,7 @@ end divisor;
 
 architecture Behavioral of divisor is
 signal cont:STD_LOGIC_VECTOR(15 downto 0):=(others=>'0'); --contador
+signal cont2:STD_LOGIC_VECTOR(15 downto 0):=(others=>'0'); --contador2
 signal comp100:STD_LOGIC_VECTOR(15 downto 0):="0000001001110001"; --contador para llegar a 100khz (10^-5s), partiendo de un reloj de 8ns. en total cambiamos la señal cada 625 pulsos
 signal comp1:STD_LOGIC_VECTOR(15 downto 0):="1111010000100100"; --contador para llegar a 1hz (10^-3s), partiendo de un reloj de 8ns. en total cambiamos la señal cada 62500 pulsos
 signal comp:STD_LOGIC_VECTOR(15 downto 0):="1111010000100100"; --comporador. lo inicializamos a 1 khz y lo variamos según apretemos botones.
@@ -72,6 +73,8 @@ end component;
 
 begin
 
+up<=frequp;
+down<=freqdown;
 --Componente para dividir la el valor de la frecuencia actual entre cien, con el objetivo de que este sea utilizado para el desplazamiento de fase
 dividiendo: divisionblock port map (clk,comp,den,coc,resto);
 
@@ -81,11 +84,11 @@ begin
 if rising_edge(clk) then
     if cont=comp then
         cont<="0000000000000000";
-        clock1<= not clock1;       
+        clock1<= not clock1;         
     else
-        if comp<comp1 then
+        --if comp<=comp1 then
             cont<=cont +'1';
-        end if;
+        --end if;
     end if;  
 end if;
 end process; 
@@ -94,58 +97,56 @@ end process;
 process(clk)
 begin
 if rising_edge(clk) then
-    if cont=comp+desplazamiento then
-        cont<=desplazamiento;
+    if cont2=comp+desplazamiento then
+        cont2<=desplazamiento;
         clock2<= not clock2;
         
     else
-       if comp>comp100 then
-            cont<=cont -'1';
-        end if;
+      -- if comp>comp100 then
+            cont2<=cont2 +'1';
+      --  end if;
     end if;  
 end if;
 end process; 
 
 -- Si apretamos el botón, disminuimos el comparador, aumentando la frecuencia
-process(clk)
+process(clk,frequp,freqdown)
 begin
   if(rising_edge(clk)) then
-    if(up = '1' and lastfrequp = '0') then     
+    if(frequp = '1' and lastfrequp = '0') then     
        comp<= comp - "100110101011";
+    else
+       if(freqdown = '1' and lastfreqdown = '0') then     
+           comp<= comp + "100110101011";          
+       end if;
     end if;
-        lastfrequp <= up;
+    lastfrequp <= frequp;
+    lastfreqdown <= freqdown;
   end if;
 end process;   
 
--- Si apretamos el botón, aumentamos el comparador, disminuyendo la frecuencia
-process(clk)
-begin
-  if(rising_edge(clk)) then
-    if(down = '1' and lastfreqdown = '0') then     
-       comp<= comp + "100110101011";
-    end if;
-        lastfreqdown <= down;
-  end if;
-end process; 
 
 
-  -- Si apretamos phaseup el botón, desplazamos el clock2 hacia la derecha. En caso de apretar el phasedown, lo desplazamos hacia la izuierda.
-process(clk)
+
+--  -- Si apretamos phaseup el botón, desplazamos el clock2 hacia la derecha. En caso de apretar el phasedown, lo desplazamos hacia la izuierda.
+process(clk,phasedown,phaseup)
 begin
   if(rising_edge(clk)) then
     if(phaseup = '1' and lastphaseup = '0') then
-       if (desplazamiento<"1011010") then   -- no aceptamos desplazamientos mayores que 90%  
+       --if (desplazamiento<"1011010") then   -- no aceptamos desplazamientos mayores que 90%  
           desplazamiento<= desplazamiento + coc;
-       end if;
+      -- end if;
     elsif (phasedown = '1' and lastphasedown = '0') then
-       if (desplazamiento>"00000000") then  -- no aceptamos desplazamientos negativos
+       --if (desplazamiento>"00000000") then  -- no aceptamos desplazamientos negativos
           desplazamiento<= desplazamiento - coc; 
-       end if;
+       --end if;
     end if;
+    lastphaseup<=phaseup;
+    lastphasedown<=phasedown;
    end if;
 end process;
 
---igualamaos los relojes a las salidas del proceso
+----igualamaos los relojes a las salidas del proceso
 out1<=clock1;
 out2<=clock2;
 
