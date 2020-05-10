@@ -63,6 +63,7 @@ begin
       
      else
         if prevnum/=num then
+            prevnum<=num;
             finish<='0';
         end if;
      
